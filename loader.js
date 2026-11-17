@@ -1,7 +1,8 @@
 /* Micro Moments Co. rentals cart loader. Built by rentals-catalog/build.py into site/loader.js. Do not edit site/loader.js by hand.
- * 1) Gets the catalog: a copy saved in this browser in the last 10 minutes, else the live Google Sheet
- *    (Apps Script ?action=catalog, up to 4 s), else an older saved copy, else catalog-snapshot.json next to this file.
- * 2) Starts the cart (cart.js) with it. A saved copy is refreshed in the background for the next page.
+ * Customers never wait on Google (Apps Script answers in 1.5 to 6 s):
+ * 1) A copy saved in this browser in the last 7 days starts the cart at once; the Sheet refreshes it in the background.
+ * 2) First visit: the live Google Sheet (Apps Script ?action=catalog) if it answers within 3 s, else catalog-snapshot.json
+ *    next to this file. A late Sheet answer is still saved, so the next page has the current catalog.
  */
 (function () {
   if (window.__mmrcLoader) return; window.__mmrcLoader = true;
@@ -9,7 +10,7 @@
   var BASE = me ? me.replace(/[^\/]*(\?.*)?$/, '') : 'https://lolaintech-sys.github.io/mm-rentals/';
   var API = window.MMRC_API || 'https://script.google.com/macros/s/AKfycbzPEwmULXhh24BJjsyz2piirEhIiC4g6j8qVVkzO2JgooiUv4wmIDAnZJmGeJfmLEkZ/exec';   // MMRC_API: only for local tests
   var VER = 'acf5c47d';
-  var KEY = 'mmrc-catalog-v1', FRESH = 10 * 60 * 1000, WAIT = 4000;
+  var KEY = 'mmrc-catalog-v1', KEEP = 7 * 24 * 3600 * 1000, WAIT = 3000;
   var started = false;
 
   function valid(d) { return d && d.settings && d.items && d.items.length && d.packages && d.categories; }
@@ -35,13 +36,12 @@
       }, function (e) { if (!done) { clearTimeout(t); no(e); } });
     });
   }
-  function live(ms) { return get(API + (API.indexOf('?') < 0 ? '?' : '&') + 'action=catalog', ms).then(function (j) { if (!j || !j.ok || !valid(j.data)) throw new Error('no catalog'); save(j.data); return j.data; }); }
+  function live() { return get(API + (API.indexOf('?') < 0 ? '?' : '&') + 'action=catalog', 20000).then(function (j) { if (!j || !j.ok || !valid(j.data)) throw new Error('no catalog'); save(j.data); return j.data; }); }
   function snapshot() { return get(BASE + 'catalog-snapshot.json?v=' + VER, 8000).then(function (d) { if (!valid(d)) throw new Error('bad snapshot'); return d; }); }
+  function fallback() { snapshot().then(function (d) { start(d, 'snapshot'); }, function () {}); }
 
   var saved = readSaved();
-  if (saved && Date.now() - saved.t < FRESH) { start(saved.d, 'saved'); live(15000).catch(function () {}); return; }
-  live(WAIT).then(function (d) { start(d, 'sheet'); }, function () {
-    if (saved) { start(saved.d, 'saved-old'); live(15000).catch(function () {}); return; }
-    snapshot().then(function (d) { start(d, 'snapshot'); }, function () {});
-  });
+  if (saved && Date.now() - saved.t < KEEP) { start(saved.d, 'saved'); live().catch(function () {}); return; }
+  var timer = setTimeout(fallback, WAIT);
+  live().then(function (d) { clearTimeout(timer); start(d, 'sheet'); }, function () { clearTimeout(timer); fallback(); });
 })();
