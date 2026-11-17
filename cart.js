@@ -17,6 +17,12 @@
   var KEY='mmrc-quote-v3', st={};
   try{st=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){st={}}
   var items={}, pkgs={}; D.items.forEach(function(i){items[i.id]=i}); D.packages.forEach(function(p){pkgs[p.id]=p});
+  // A variation with "uses" (e.g. "Full set - all sizes") is one of each listed variation: its stock is the fewest of those.
+  D.items.forEach(function(i){(i.options||[]).forEach(function(o){if(o.uses&&o.uses.length)o.stock=Math.min.apply(null,o.uses.map(function(n){var x=i.options.filter(function(y){return y.name===n})[0];return x?(+x.stock||0):0}))})});
+  function optPrices(i){return (i.options||[]).map(function(o){return +o.price||0}).filter(function(p){return p>0})}
+  function basePrice(i){var p=optPrices(i);return p.length?Math.min.apply(null,p):i.price}
+  function fromPrice(i){var p=optPrices(i);return p.length>1&&Math.min.apply(null,p)<Math.max.apply(null,p)}
+  function showOptPrice(i,o){return o.price&&(fromPrice(i)||o.price!==basePrice(i))}
   var lines=(st.lines||[]).filter(function(l){return l.kind==='pkg'?pkgs[l.id]:items[l.id]});
   var ev={promo:st.promo||'',from:st.from||'',until:st.until||'',method:st.method||'Delivery',street:st.street||'',city:st.city||'',zip:st.zip||'',miles:st.miles==null?null:st.miles,milesFor:st.milesFor||''};
   var ui={cat:'all',q:'',open:false,sent:null,modal:null,item:null,looking:false,lookErr:''};
@@ -50,7 +56,7 @@
     var u={}, alts=[];
     function add(id,opt,q){var k=id+'|'+(opt||''); u[k]=(u[k]||0)+q}
     list.forEach(function(l){
-      if(l.kind==='item'){ add(l.id,l.opt,l.qty); return }
+      if(l.kind==='item'){ var so=((items[l.id]||{}).options||[]).filter(function(o){return o.name===l.opt&&o.uses&&o.uses.length})[0]; if(so) so.uses.forEach(function(n){add(l.id,n,l.qty)}); else add(l.id,l.opt,l.qty); return }
       var p=pkgs[l.id];
       p.contents.forEach(function(c){ if(c.alt) alts.push(c); else add(c.item,'',c.qty) });
       p.choices.forEach(function(c){ var v=(l.sel||{})[c.key]; if(c.key==='arch'){var a=c.choices.filter(function(a){return a.name===v})[0]; if(a) add(a.item,'',1)} else add(c.item,v,c.qty) });
@@ -136,13 +142,13 @@
   }
   function itemCard(i){
     var opts=(i.options||[]).filter(function(o){return o.stock>0});
-    var sel=opts.length>1?'<select aria-label="Option for '+esc(i.name)+'" data-opt>'+opts.map(function(o){return '<option value="'+esc(o.name)+'">'+esc(o.name)+(o.price&&o.price!==i.price?' ('+short(o.price)+')':'')+'</option>'}).join('')+'</select>':(opts.length===1?'<p class="blurb">'+esc(opts[0].name)+'</p>':'');
+    var sel=opts.length>1?'<select aria-label="Option for '+esc(i.name)+'" data-opt>'+opts.map(function(o){return '<option value="'+esc(o.name)+'">'+esc(o.name)+(showOptPrice(i,o)?' ('+short(o.price)+')':'')+'</option>'}).join('')+'</select>':(opts.length===1?'<p class="blurb">'+esc(opts[0].name)+'</p>':'');
     var n=(i.photos||[]).length;
     return '<article class="card" data-id="'+esc(i.id)+'">'+
       '<div class="ph"><button type="button" class="phb" data-open-item aria-label="Photos and details: '+esc(i.name)+'">'+(i.photo?'<img loading="lazy" src="'+esc(i.photo)+'" alt="'+esc(i.name)+'" onerror="this.remove()">':'')+
       (n>1?'<span class="pcount" aria-hidden="true">'+n+' photos</span>':'')+'</button></div>'+
       '<div class="body"><h3><button type="button" class="tbtn" data-open-item>'+esc(i.name)+'</button></h3>'+
-      '<p class="price">'+short(i.price)+' <small>'+unitText(i)+'</small></p>'+
+      '<p class="price">'+(fromPrice(i)?'From ':'')+short(basePrice(i))+' <small>'+unitText(i)+'</small></p>'+
       (i.blurb?'<p class="blurb">'+esc(i.blurb)+'</p>':'')+
       (!i.pickup&&!i.service?'<p class="tag">Delivery only</p>':'')+sel+
       '<div class="row"><span class="step"><button type="button" data-dec aria-label="Less">−</button><input type="number" inputmode="numeric" min="1" value="1" aria-label="Quantity of '+esc(i.name)+'"><button type="button" data-inc aria-label="More">+</button></span>'+
@@ -310,7 +316,7 @@
     var keys=p.choices.map(function(c){return c.key});
     if(ui.modal.open===undefined) ui.modal.open=keys[0];
     var ch=p.choices.map(function(c,idx){
-      var opts=choiceOptions(c).filter(function(o){ if(c.key==='arch') return stockOf(o.item,'')>=1; return o.stock==null||o.stock>=c.qty });
+      var opts=choiceOptions(c).filter(function(o){ if(c.key==='arch') return stockOf(o.item,'')>=1; return o.stock==null||o.stock>0 });
       if(sel[c.key]==null||!opts.some(function(o){return o.name===sel[c.key]})){var w=opts.filter(function(o){return /^White/.test(o.name)})[0];sel[c.key]=w?w.name:(opts.length?opts[0].name:'')}
       var cur=opts.filter(function(o){return o.name===sel[c.key]})[0]||{}, open=ui.modal.open===c.key, done=ui.modal.picked&&ui.modal.picked[c.key];
       var thumb=cur.photo?'<img src="'+esc(cur.photo)+'" alt="">':(cur.swatch?'<span class="sw" style="background:'+esc(cur.swatch)+'"></span>':'');
@@ -356,7 +362,7 @@
       '<div class="tiles" role="radiogroup" aria-label="'+esc(lbl)+'">'+opts.map(function(x){var on=x.name===ui.item.opt;
         return '<button type="button" class="tile" role="radio" aria-checked="'+on+'" data-iopt="'+esc(x.name)+'" title="'+esc(x.name)+'">'+
           (x.photo?'<img src="'+esc(x.photo)+'" alt="">':(x.swatch?'<span class="sw" style="background:'+esc(x.swatch)+'"></span>':''))+
-          '<span class="tl">'+esc(x.name)+(x.price&&x.price!==it.price?' '+short(x.price):'')+'</span></button>'}).join('')+'</div></div>'
+          '<span class="tl">'+esc(x.name)+(showOptPrice(it,x)?' '+short(x.price):'')+'</span></button>'}).join('')+'</div></div>'
       :(opts.length===1?'<p class="legend">'+esc(lbl)+': <span class="chosen">'+esc(opts[0].name)+'</span></p>':'');
     m.querySelector('#mmrc-ititle').textContent=it.name;
     m.querySelector('.ib').innerHTML='<div class="igrid"><div>'+gal+'</div><div class="iinfo">'+
@@ -404,8 +410,7 @@
 
   /* ---------- actions ---------- */
   function tryLines(next,okMsg){
-    var bad=overflows(next);
-    if(bad.length){toast('We can\'t add that many '+label(bad[0])+' online. Need more? Ask in the notes.');return false}
+    // Lola (Nov 17): never block a quantity. Requests over what she owns arrive flagged "Short" in the Availability column.
     lines=next; save(); renderCart(); if(okMsg) toast(okMsg); return true;
   }
   function addItem(id,opt,qty){
