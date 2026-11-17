@@ -1,6 +1,7 @@
 /* Micro Moments Co. rentals cart loader. Built by rentals-catalog/build.py into site/loader.js. Do not edit site/loader.js by hand.
  * 1) catalog-snapshot.json next to this file (GitHub Pages, fast). The Apps Script publishes it from the Google Sheet
- *    within about 5 minutes of a change; the URL changes every 5 minutes so no browser or CDN keeps an old copy.
+ *    straight away when the dashboard saves (within 5 minutes for Sheet edits); the URL changes every minute so no
+ *    browser or CDN keeps an old copy for longer than that.
  * 2) If that is slow (2.5 s) or fails: the copy saved in this browser from an earlier page.
  * 3) No saved copy either: the live Google Sheet (Apps Script ?action=catalog, slow: 1.5 to 6 s).
  */
@@ -38,7 +39,7 @@
     });
   }
   function live() { return get(API + (API.indexOf('?') < 0 ? '?' : '&') + 'action=catalog', 20000).then(function (j) { if (!j || !j.ok || !valid(j.data)) throw new Error('no catalog'); save(j.data); return j.data; }); }
-  function snapshot() { return get(SNAP + '?t=' + Math.floor(Date.now() / 300000), 6000).then(function (d) { if (!valid(d)) throw new Error('bad snapshot'); save(d); return d; }); }
+  function snapshot() { return get(SNAP + '?t=' + Math.floor(Date.now() / 60000), 6000).then(function (d) { if (!valid(d)) throw new Error('bad snapshot'); save(d); return d; }); }
 
   var saved = readSaved();
   var timer = saved ? setTimeout(function () { start(saved.d, 'saved'); }, WAIT) : null;
