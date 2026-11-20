@@ -27,7 +27,7 @@
   var ev={promo:st.promo||'',from:st.from||'',until:st.until||'',method:st.method||'Delivery',street:st.street||'',city:st.city||'',zip:st.zip||'',miles:st.miles==null?null:st.miles,milesFor:st.milesFor||''};
   var ui={cat:'all',q:'',open:false,sent:null,modal:null,item:null,looking:false,lookErr:''};
   var testMiles=(location.search.match(/[?&]miles=([\d.]+)/)||[])[1];
-  var minDate=(function(){var d=new Date();d.setDate(d.getDate()+(S.lead_days||0));return d.toISOString().slice(0,10)})();
+  var minDate=(function(){var d=new Date();d.setDate(d.getDate()+(S.lead_days||0));return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)})();
 
   function save(){try{localStorage.setItem(KEY,JSON.stringify({promo:ev.promo,lines:lines,from:ev.from,until:ev.until,method:ev.method,street:ev.street,city:ev.city,zip:ev.zip,miles:ev.miles,milesFor:ev.milesFor}))}catch(e){}}
   function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
