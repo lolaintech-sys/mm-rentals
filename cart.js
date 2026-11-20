@@ -275,7 +275,7 @@
       '<label class="check"><input type="checkbox" name="terms"><span>I agree to Micro Moments Co. <a href="'+esc(S.terms_url)+'" target="_blank" rel="noopener">Rental Terms &amp; Conditions</a></span></label>'+
       '<label class="check"><input type="checkbox" name="marketing"><span>Send me news about new rentals and offers</span></label>'+
       '<p class="note">'+esc(S.terms_note)+'</p><p class="err" data-err role="alert"></p>'+
-      '<button class="btn" type="submit">Request my free quote</button></form>';
+      '<button class="btn" type="submit">Request My Rentals</button></form>';
   }
   function renderCart(){
     var fab=root.querySelector('[data-fab]');
@@ -512,7 +512,7 @@
     if(S.quote_endpoint){
       fetch(S.quote_endpoint,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)})
         .then(function(r){return r.json()}).then(function(j){if(j&&j.ok) done(); else throw 0})
-        .catch(function(){btn.disabled=false;btn.textContent='Request my free quote';err.innerHTML='Something went wrong sending your request.'+(S.fallback_email?' <a href="mailto:'+esc(S.fallback_email)+'?subject='+encodeURIComponent('Rental quote request')+'&body='+encodeURIComponent(payload.summary)+'">Email it to us instead</a>.':' Please try again.')});
+        .catch(function(){btn.disabled=false;btn.textContent='Request My Rentals';err.innerHTML='Something went wrong sending your request.'+(S.fallback_email?' <a href="mailto:'+esc(S.fallback_email)+'?subject='+encodeURIComponent('Rental quote request')+'&body='+encodeURIComponent(payload.summary)+'">Email it to us instead</a>.':' Please try again.')});
     } else {
       console.log('[mmrc] preview mode, request not sent:',payload);
       ui.sent='<strong>Preview mode.</strong> Nothing was sent because quote requests aren\'t turned on yet. This is what you would receive:<pre style="white-space:pre-wrap;font-size:.8rem;margin-top:10px">'+esc(payload.summary)+'</pre>';
