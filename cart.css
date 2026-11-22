@@ -75,6 +75,8 @@
 .mmrc .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .mmrc .msg{padding:14px;background:var(--cream);border-left:3px solid var(--gold);font-size:.92rem}
 .mmrc .err{color:#9b2c2c;font-size:.84rem}
+.mmrc select.need,.mmrc .iopts.need{outline:2px solid #b3261e;outline-offset:2px}
+.mmrc .need-t{color:#b3261e}
 .mmrc .toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;font-size:.88rem;z-index:9999}
 /* event date + delivery/pickup */
 .mmrc .evt{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;padding:14px;background:var(--cream);border:1px solid var(--line);margin-bottom:16px}

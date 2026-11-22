@@ -98,7 +98,7 @@
   function promoState(sub,d){
     if(!ev.promo) return null;
     var p=promoDef(); if(!p) return {ok:false,msg:'That code isn\'t valid.'};
-    if(p.min_subtotal&&sub<p.min_subtotal) return {ok:false,p:p,msg:p.code+' is for orders of '+short(p.min_subtotal)+' or more. Add '+money(p.min_subtotal-sub)+' to use it.'};
+    if(p.min_subtotal&&sub<p.min_subtotal) return {ok:false,p:p,msg:p.code+' is for rentals of '+short(p.min_subtotal)+' or more. Add '+money(p.min_subtotal-sub)+' to use it.'};
     if(p.type==='percent'){
       return {ok:true,p:p,msg:p.code+' applied: '+p.value+'% off'+(p.first_booking_only?'. It\'s for first bookings; we confirm it in your quote.':'.')};
     }
@@ -140,9 +140,11 @@
       '<label>Until<input type="date" data-ev="until" min="'+esc(ev.from||minDate)+'" value="'+esc(ev.until)+'"></label>'+
       (ev.method==='Pickup'&&S.pickup_address?'<p class="pick"><b>Pickup location:</b> '+esc(S.pickup_address)+'</p>':'')+'</div>';
   }
+  function optLbl(i){return i.option_label||((i.options||[]).some(function(o){return o.swatch})?'Color':'Option')}
+  function chooseTxt(i){var l=optLbl(i).toLowerCase();return 'Choose '+(/^[aeiou]/.test(l)?'an ':'a ')+l}
   function itemCard(i){
     var opts=(i.options||[]).filter(function(o){return o.stock>0});
-    var sel=opts.length>1?'<select aria-label="Option for '+esc(i.name)+'" data-opt>'+opts.map(function(o){return '<option value="'+esc(o.name)+'">'+esc(o.name)+(showOptPrice(i,o)?' ('+short(o.price)+')':'')+'</option>'}).join('')+'</select>':(opts.length===1?'<p class="blurb">'+esc(opts[0].name)+'</p>':'');
+    var sel=opts.length>1?'<select aria-label="Option for '+esc(i.name)+'" data-opt><option value="">'+esc(chooseTxt(i))+'</option>'+opts.map(function(o){return '<option value="'+esc(o.name)+'">'+esc(o.name)+(showOptPrice(i,o)?' ('+short(o.price)+')':'')+'</option>'}).join('')+'</select>':(opts.length===1?'<p class="blurb">'+esc(opts[0].name)+'</p>':'');
     var n=(i.photos||[]).length;
     return '<article class="card" data-id="'+esc(i.id)+'">'+
       '<div class="ph"><button type="button" class="phb" data-open-item aria-label="Photos and details: '+esc(i.name)+'">'+(i.photo?'<img loading="lazy" src="'+esc(i.photo)+'" alt="'+esc(i.name)+'" onerror="this.remove()">':'')+
@@ -317,12 +319,12 @@
     if(ui.modal.open===undefined) ui.modal.open=keys[0];
     var ch=p.choices.map(function(c,idx){
       var opts=choiceOptions(c).filter(function(o){ if(c.key==='arch') return stockOf(o.item,'')>=1; return o.stock==null||o.stock>0 });
-      if(sel[c.key]==null||!opts.some(function(o){return o.name===sel[c.key]})){var w=opts.filter(function(o){return /^White/.test(o.name)})[0];sel[c.key]=w?w.name:(opts.length?opts[0].name:'')}
+      if(sel[c.key]!=null&&!opts.some(function(o){return o.name===sel[c.key]})) delete sel[c.key]; if(sel[c.key]==null&&opts.length===1) sel[c.key]=opts[0].name;
       var cur=opts.filter(function(o){return o.name===sel[c.key]})[0]||{}, open=ui.modal.open===c.key, done=ui.modal.picked&&ui.modal.picked[c.key];
       var thumb=cur.photo?'<img src="'+esc(cur.photo)+'" alt="">':(cur.swatch?'<span class="sw" style="background:'+esc(cur.swatch)+'"></span>':'');
       var head='<button type="button" class="chead" data-open-choice="'+esc(c.key)+'" aria-expanded="'+open+'">'+
         '<span class="step-n">'+(idx+1)+'</span><span class="cht"><b>'+esc(c.label)+'</b>'+(c.qty>1?' <span class="opt">(for '+c.qty+')</span>':'')+
-        '<br><span class="chosen">'+(done||!open?esc(cur.name||'')+(cur.add?' (+'+short(cur.add)+')':''):'Choose one')+'</span></span>'+
+        '<br><span class="chosen">'+(cur.name?esc(cur.name)+(cur.add?' (+'+short(cur.add)+')':''):'<span class="need-t">Choose one</span>')+'</span></span>'+
         (!open&&thumb?'<span class="cthumb">'+thumb+'</span>':'')+'<span class="chg">'+(open?'':'Change')+'</span></button>';
       if(!open) return '<div class="ch closed">'+head+'</div>';
       return '<div class="ch">'+head+
@@ -352,13 +354,13 @@
     var m=root.querySelector('[data-imodal]'); m.hidden=!ui.item; scrim(); lock();
     if(!ui.item) return;
     var it=items[ui.item.id], opts=itemOpts(it);
-    if(opts.length&&!opts.some(function(o){return o.name===ui.item.opt})) ui.item.opt=opts[0].name;
+    if(!opts.some(function(o){return o.name===ui.item.opt})) ui.item.opt=opts.length===1?opts[0].name:'';
     var o=opts.filter(function(o){return o.name===ui.item.opt})[0], pics=itemPics(it,o), unit=(o&&o.price)||it.price, qty=ui.item.qty;
     var lbl=it.option_label||(opts.some(function(o){return o.swatch})?'Color':'Option');
     var gal='<div class="gal"><div class="gtrack" data-gtrack tabindex="0" aria-label="Photos of '+esc(it.name)+'">'+pics.map(function(u,n){return '<img src="'+esc(u)+'" alt="'+esc(it.name+(pics.length>1?', photo '+(n+1)+' of '+pics.length:''))+'"'+(n?' loading="lazy"':'')+'>'}).join('')+'</div>'+
       (pics.length>1?'<button type="button" class="gnav gprev" data-gstep="-1">‹</button><button type="button" class="gnav gnext" data-gstep="1">›</button><span class="gcount" aria-hidden="true"><span data-gnum>1</span> / '+pics.length+'</span>':'')+'</div>'+
       (pics.length>1?'<div class="gthumbs">'+pics.map(function(u,n){return '<button type="button" class="gthumb" data-gthumb="'+n+'" aria-label="Photo '+(n+1)+' of '+pics.length+'" aria-current="'+(n===0)+'"><img src="'+esc(u)+'" alt=""></button>'}).join('')+'</div>':'');
-    var choose=opts.length>1?'<div class="iopts"><p class="legend">'+esc(lbl)+': <span class="chosen">'+esc(ui.item.opt)+'</span></p>'+
+    var choose=opts.length>1?'<div class="iopts"><p class="legend">'+esc(lbl)+': <span class="chosen">'+(ui.item.opt?esc(ui.item.opt):'<span class="need-t">'+esc(chooseTxt(it))+'</span>')+'</span></p>'+
       '<div class="tiles" role="radiogroup" aria-label="'+esc(lbl)+'">'+opts.map(function(x){var on=x.name===ui.item.opt;
         return '<button type="button" class="tile" role="radio" aria-checked="'+on+'" data-iopt="'+esc(x.name)+'" title="'+esc(x.name)+'">'+
           (x.photo?'<img src="'+esc(x.photo)+'" alt="">':(x.swatch?'<span class="sw" style="background:'+esc(x.swatch)+'"></span>':''))+
@@ -548,16 +550,16 @@
       if(t.dataset.gthumb!=null){galleryGo(+t.dataset.gthumb);return}
       if(t.dataset.gstep!=null){galleryGo(0,+t.dataset.gstep);return}
       if(t.dataset.iqd!=null){itemQty(ui.item.qty+(+t.dataset.iqd));return}
-      if(t.hasAttribute('data-add-item')){var iq=root.querySelector('[data-imodal] [data-iqty]');ui.item.qty=Math.max(1,iq.value|0||1);if(addItem(ui.item.id,ui.item.opt||'',ui.item.qty))closeItem();return}
+      if(t.hasAttribute('data-add-item')){if(itemOpts(items[ui.item.id]).length>1&&!ui.item.opt){toast(chooseTxt(items[ui.item.id])+' first');var tg=root.querySelector('[data-imodal] .iopts');if(tg){tg.classList.add('need');tg.scrollIntoView({block:'nearest'})}return}var iq=root.querySelector('[data-imodal] [data-iqty]');ui.item.qty=Math.max(1,iq.value|0||1);if(addItem(ui.item.id,ui.item.opt||'',ui.item.qty))closeItem();return}
       if(t.classList.contains('x')){closeItem();return}
     }
     if(c&&(t.hasAttribute('data-inc')||t.hasAttribute('data-dec'))){var inp=c.querySelector('input');inp.value=Math.max(1,(inp.value|0)+(t.hasAttribute('data-inc')?1:-1));return}
-    if(c&&t.hasAttribute('data-add')){var s=c.querySelector('[data-opt]'),it=items[c.dataset.id],only=(it.options||[]).filter(function(o){return o.stock>0});addItem(c.dataset.id,s?s.value:(only[0]&&only[0].name)||'',c.querySelector('input').value);return}
+    if(c&&t.hasAttribute('data-add')){var s=c.querySelector('[data-opt]'),it=items[c.dataset.id];if(s&&!s.value){s.classList.add('need');s.focus();toast(chooseTxt(it)+' first');return}var only=(it.options||[]).filter(function(o){return o.stock>0});addItem(c.dataset.id,s?s.value:(only[0]&&only[0].name)||'',c.querySelector('input').value);return}
     if(c&&t.hasAttribute('data-open-pkg')){ui.modal={id:c.dataset.pkg,sel:{}};renderModal();root.querySelector('[data-modal] .x').focus();return}
     if(t.dataset.choice!=null&&t.dataset.val!=null&&ui.modal){var mm=root.querySelector('[data-modal]'),y=mm.scrollTop;ui.modal.sel[t.dataset.choice]=t.dataset.val;ui.modal.picked=ui.modal.picked||{};ui.modal.picked[t.dataset.choice]=1;renderModal();mm.scrollTop=y;return}
     if(t.dataset.openChoice!=null&&ui.modal){ui.modal.open=ui.modal.open===t.dataset.openChoice?null:t.dataset.openChoice;renderModal();var oc=root.querySelector('[data-modal] .ch:not(.closed)');if(oc)oc.scrollIntoView({block:'nearest'});return}
     if(t.dataset.nextChoice!=null&&ui.modal){var ks=pkgs[ui.modal.id].choices.map(function(c){return c.key}),ix=ks.indexOf(t.dataset.nextChoice);ui.modal.picked=ui.modal.picked||{};ui.modal.picked[t.dataset.nextChoice]=1;ui.modal.open=ks[ix+1]||null;renderModal();var nc=root.querySelector('[data-modal] .ch:not(.closed)')||root.querySelector('[data-add-pkg]');if(nc)nc.scrollIntoView({block:'nearest'});return}
-    if(t.hasAttribute('data-add-pkg')){var next=lines.concat([{kind:'pkg',id:ui.modal.id,sel:Object.assign({},ui.modal.sel),qty:1}]);if(tryLines(next,'Package added to your quote')){ui.modal=null;renderModal()}return}
+    if(t.hasAttribute('data-add-pkg')){var miss=pkgs[ui.modal.id].choices.filter(function(c){return ui.modal.sel[c.key]==null})[0];if(miss){ui.modal.open=miss.key;renderModal();toast('Choose your '+miss.label.toLowerCase()+' first');var oc2=root.querySelector('[data-modal] .ch:not(.closed)');if(oc2)oc2.scrollIntoView({block:'nearest'});return}var next=lines.concat([{kind:'pkg',id:ui.modal.id,sel:Object.assign({},ui.modal.sel),qty:1}]);if(tryLines(next,'Package added to your quote')){ui.modal=null;renderModal()}return}
     if(t.hasAttribute('data-fab')){ui.open=true;if(ui.sent&&lines.length)ui.sent=null;renderCart();root.querySelector('[data-drawer] .x').focus();return}
     if(t.classList.contains('x')){if(t.closest('[data-modal]')){ui.modal=null;renderModal()}else{ui.open=false;if(ui.sent)ui.sent=null;renderCart()}return}
     if(t.dataset.rm!=null){lines.splice(+t.dataset.rm,1);save();renderCart();return}
@@ -569,7 +571,7 @@
     var k=e.target.dataset.ev, el=e.target;
     if(el.dataset.choice!=null){ui.modal.sel[el.dataset.choice]=el.value;renderModal();return}
     if(el.hasAttribute('data-iqty')){itemQty(el.value);return}
-    if(el.hasAttribute('data-opt')){var cd=el.closest('.card'),it=items[cd.dataset.id],o=(it.options||[]).filter(function(o){return o.name===el.value})[0],im=cd.querySelector('.ph img');if(o&&o.photo&&im)im.src=o.photo;else if(im)im.src=it.photo;return}
+    if(el.hasAttribute('data-opt')){el.classList.remove('need');var cd=el.closest('.card'),it=items[cd.dataset.id],o=(it.options||[]).filter(function(o){return o.name===el.value})[0],im=cd.querySelector('.ph img');if(o&&o.photo&&im)im.src=o.photo;else if(im)im.src=it.photo;return}
     if(k){ev[k]=el.value.trim();
       if(k==='from'&&ev.from&&(!ev.until||ev.until<ev.from)) ev.until=ev.from;
       save();
