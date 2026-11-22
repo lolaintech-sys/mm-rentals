@@ -10,7 +10,7 @@
   var me = document.currentScript && document.currentScript.src;
   var BASE = me ? me.replace(/[^\/]*(\?.*)?$/, '') : 'https://lolaintech-sys.github.io/mm-rentals/';
   var API = window.MMRC_API || 'https://script.google.com/macros/s/AKfycbzPEwmULXhh24BJjsyz2piirEhIiC4g6j8qVVkzO2JgooiUv4wmIDAnZJmGeJfmLEkZ/exec';   // MMRC_API: only for local tests
-  var VER = '563f9c9e';
+  var VER = '2530f386';
   var SNAP = window.MMRC_SNAPSHOT || BASE + 'catalog-snapshot.json';   // MMRC_SNAPSHOT: only for local tests
   var KEY = 'mmrc-catalog-v1', WAIT = 2500;
   var started = false;

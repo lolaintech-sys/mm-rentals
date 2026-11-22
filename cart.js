@@ -104,7 +104,7 @@
     }
     if(p.type==='free_delivery'){
       if(hasPkg()) return {ok:false,p:p,msg:'Code '+p.code+' not applied: packages already include delivery within '+DL.included_miles+' miles.'};
-      if(ev.method!=='Delivery') return {ok:false,p:p,msg:p.code+' is for free deliveries within '+p.max_miles+' miles of us. It isn\'t eligible for pickup orders.'};
+      if(ev.method!=='Delivery') return {ok:false,p:p,msg:p.code+' is for free deliveries within '+p.max_miles+' miles of us. It isn\'t eligible for pickup rentals.'};
       if(d.state==='pending') return {ok:false,p:p,msg:'Enter your delivery address to apply '+p.code+'.'};
       if(d.state!=='ok'||d.miles>p.max_miles) return {ok:false,p:p,msg:p.code+' is for free deliveries within '+p.max_miles+' miles of us.'};
       return {ok:true,p:p,msg:p.code+' applied: free delivery and pickup.'};
