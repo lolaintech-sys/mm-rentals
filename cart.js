@@ -498,7 +498,8 @@
     if(ev.method==='Delivery'&&totals().delivery.state==='far'){showOutside();return}
     var iss=issues(); if(iss.length){err.textContent=iss[0];return}
     var t=totals(); f.promo=t.promo&&t.promo.ok?t.promo.p.code:(ev.promo?ev.promo+' (not applied)':''); f.from=ev.from; f.until=ev.until; f.method=ev.method; if(ev.method==='Pickup'){ f.pickup_address=S.pickup_address||''; f.pickup_when=pretty(ev.from)+' at '+clock(f.pickup_time); f.return_when=pretty(ev.until)+' at '+clock(f.return_time); } f.street=ev.street; f.city=ev.city; f.zip=ev.zip;
-    var payload={submitted:new Date().toISOString(),page:location.href,form:f,
+    var src=null; try{src=JSON.parse(localStorage.getItem('mm-src-v1')||'null'); if(src&&Date.now()-src.t>90*864e5)src=null}catch(e){}
+    var payload={submitted:new Date().toISOString(),page:location.href,form:f,source:src?{channel:src.c,detail:src.d,landing:src.l}:{channel:'Direct',detail:'',landing:''},
       lines:lines.map(function(l){var name=l.kind==='pkg'?pkgs[l.id].name:items[l.id].name;return {kind:l.kind,id:l.id,option:l.opt||'',choices:l.sel||null,qty:l.qty||1,amount:linePrice(l),text:(l.kind==='pkg'?name+' ['+pkgs[l.id].choices.map(function(c){return (l.sel||{})[c.key]}).join(', ')+']':l.qty+' × '+name+(l.opt?' ('+l.opt+')':'')+(perDay(l)&&days()>1?', '+days()+' days':''))+' = '+money(linePrice(l))}}),
       totals:{rentals:t.rentals,services:t.services,discount:t.discount,delivery_waived:t.delivery.waived||0,delivery:t.delivery.fee,miles:t.delivery.miles||null,tax:t.tax,total:t.total},summary:summary(f,t),
       usage:(function(){var u=usage(lines),out=[];for(var k in u){var p=k.split('|'),own=stockOf(p[0],p[1]);if(isFinite(own))out.push({key:k,name:label(k),qty:u[k],owned:own})}return out})()};
