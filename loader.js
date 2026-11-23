@@ -7,10 +7,32 @@
  */
 (function () {
   if (window.__mmrcLoader) return; window.__mmrcLoader = true;
+
+  /* Where this visitor came from, for the admin dashboard: ad click IDs, UTM tags, or the referring site. The newest
+   * visit that isn't "direct" wins and is kept 90 days; the cart sends it with the quote request. Nothing is shown. */
+  try {
+    var q = new URLSearchParams(location.search), ref = '', host = location.hostname.replace(/^www\./, '');
+    try { ref = document.referrer ? new URL(document.referrer).hostname.replace(/^www\./, '') : ''; } catch (e) {}
+    if (ref === host || /squarespace\.com$/.test(ref)) ref = '';
+    var u = function (k) { return String(q.get(k) || '').slice(0, 80); };
+    var us = u('utm_source').toLowerCase(), um = u('utm_medium').toLowerCase(), uc = u('utm_campaign');
+    var site = function (h) {
+      return /(^|\.)google\./.test(h) && /maps|business/.test(h + ' ' + us) ? 'Google Maps' : /(^|\.)google\.|^google$|^googleapis|android-app:\/\/com\.google/.test(h) ? 'Google search' :
+        /instagram|^ig$/.test(h) ? 'Instagram' : /facebook|^fb$|^fb\.|^m\.me$/.test(h) ? 'Facebook' : /pinterest|^pin\.it$/.test(h) ? 'Pinterest' :
+        /tiktok/.test(h) ? 'TikTok' : /bing|duckduckgo|yahoo|ecosia/.test(h) ? 'Other search' : /chatgpt|openai|perplexity|claude\.ai|copilot|gemini/.test(h) ? 'AI chat' : '';
+    };
+    var ch = '';
+    if (q.get('gclid') || q.get('gbraid') || q.get('wbraid') || (/google/.test(us) && /cpc|ppc|paid/.test(um))) ch = 'Google Ads';
+    else if (/^(fb|facebook|ig|instagram|meta|an)$/.test(us) && (uc || /paid|cpc|ad/.test(um))) ch = 'Meta ads';
+    else if (q.get('fbclid') && uc) ch = 'Meta ads';
+    else if (us) ch = site(us) || (us === 'gbp' || us === 'google_business' ? 'Google Maps' : 'Tagged link: ' + us);
+    else if (ref) ch = site(ref) || 'Other site: ' + ref;
+    if (ch) localStorage.setItem('mm-src-v1', JSON.stringify({ c: ch, d: (uc || ref || us).slice(0, 80), l: location.pathname.slice(0, 80), t: Date.now() }));
+  } catch (e) {}
   var me = document.currentScript && document.currentScript.src;
   var BASE = me ? me.replace(/[^\/]*(\?.*)?$/, '') : 'https://lolaintech-sys.github.io/mm-rentals/';
   var API = window.MMRC_API || 'https://script.google.com/macros/s/AKfycbzPEwmULXhh24BJjsyz2piirEhIiC4g6j8qVVkzO2JgooiUv4wmIDAnZJmGeJfmLEkZ/exec';   // MMRC_API: only for local tests
-  var VER = '2530f386';
+  var VER = 'ff8e850e';
   var SNAP = window.MMRC_SNAPSHOT || BASE + 'catalog-snapshot.json';   // MMRC_SNAPSHOT: only for local tests
   var KEY = 'mmrc-catalog-v1', WAIT = 2500;
   var started = false;
