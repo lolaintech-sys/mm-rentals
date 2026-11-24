@@ -509,7 +509,10 @@
          Uses the GA4 tag Squarespace already loads. form_name rental_quote tells it apart from the
          inquiry and proposal forms. value = estimated total with tax. No personal data. */
       try{ if(typeof window.gtag==='function') window.gtag('event','generate_lead',{form_name:'rental_quote',value:Math.round(t.total*100)/100,currency:'USD',fulfillment:ev.method==='Pickup'?'pickup':'delivery'}) }catch(e){}
-      ui.sent='<strong>Thank you, '+esc(f.name.split(' ')[0])+'!</strong><br>Your request for '+esc(pretty(ev.from))+(ev.until!==ev.from?' to '+esc(pretty(ev.until)):'')+' is in. Estimated total: '+money(t.total)+'.<br>We\'ll confirm availability and email your finalized quote to '+esc(f.email)+' within the same business day'+(S.business_hours?' ('+esc(S.business_hours.label)+')':'')+'.';
+      var td=new Date(),today=td.getFullYear()+'-'+('0'+(td.getMonth()+1)).slice(-2)+'-'+('0'+td.getDate()).slice(-2);
+      ui.sent='<strong>Thank you, '+esc(f.name.split(' ')[0])+'!</strong><br>Your request for '+esc(pretty(ev.from))+(ev.until!==ev.from?' to '+esc(pretty(ev.until)):'')+' is in. Estimated total: '+money(t.total)+'.<br>'+(ev.from===today
+        ?'Since your event is today, we can\'t guarantee availability. We\'ll check right away and let you know at '+esc(f.email)+' or by phone as soon as possible.'
+        :'We\'ll confirm availability and email your finalized quote to '+esc(f.email)+' within the same business day'+(S.business_hours?' ('+esc(S.business_hours.label)+')':'')+'.');
       lines=[];save();render();
     }
     if(S.quote_endpoint){
