@@ -301,7 +301,7 @@
     var fab=root.querySelector('[data-fab]');
     fab.querySelector('.count').textContent=count(); fab.hidden=!lines.length&&!ui.sent;
     var d=root.querySelector('[data-drawer]'), s=root.querySelector('[data-scrim]');
-    d.hidden=!ui.open; scrim(); lock();
+    d.hidden=!ui.open; scrim(); lock(); cookieGap();
     if(mounts('quote').length) fab.hidden=true;
     var targets=mounts('quote'); if(ui.open) targets.push(d.querySelector('.db'));
     targets.forEach(function(b){
@@ -417,6 +417,15 @@
   function closeItem(){var f=ui.item&&ui.item.from; ui.item=null; renderItem(); if(f&&f.isConnected) f.focus({preventScroll:true})}
   function scrim(){root.querySelector('[data-scrim]').hidden=!ui.open&&!ui.modal&&!ui.item}
   function lock(){document.documentElement.classList.toggle('mmrc-lock',!!(ui.item||ui.modal||ui.open))}
+  /* Elfsight cookie banner sits on top of everything at the bottom of the screen. While it shows,
+     end the quote drawer just above it so the Request button stays tappable. */
+  var gapTimer;
+  function findBanner(r){try{var e=r.querySelector('[class*="cookie-consent-widget-cont"]');if(e)return e;var all=r.querySelectorAll('*');for(var i=0;i<all.length;i++){if(all[i].shadowRoot){var f=findBanner(all[i].shadowRoot);if(f)return f}}}catch(x){}return null}
+  function cookieGap(){
+    var d=root.querySelector('[data-drawer]'); clearInterval(gapTimer);
+    function set(){var gap=0;try{var hosts=document.querySelectorAll('[class*="eapps-cookie-consent"]');for(var i=0;i<hosts.length&&!gap;i++){var b=hosts[i].shadowRoot&&findBanner(hosts[i].shadowRoot);if(b){var rc=b.getBoundingClientRect();if(rc.height>0&&rc.top<innerHeight&&rc.bottom>=innerHeight-4)gap=Math.round(innerHeight-rc.top)}}}catch(x){}d.style.bottom=gap?gap+'px':''}
+    if(ui.open){set();gapTimer=setInterval(set,1000)}else d.style.bottom='';
+  }
 
   function render(){renderTop();renderCatalog();renderCart();renderModal();renderItem()}
 
