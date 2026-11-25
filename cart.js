@@ -294,7 +294,7 @@
       '<label>Notes <span class="opt">(optional)</span><textarea name="notes" rows="3" placeholder="Colors, timing, anything else"></textarea></label>'+
       '<label class="check"><input type="checkbox" name="terms"><span>I agree to Micro Moments Co. <a href="'+esc(S.terms_url)+'" target="_blank" rel="noopener">Rental Terms &amp; Conditions</a></span></label>'+
       '<label class="check"><input type="checkbox" name="marketing"><span>Send me news about new rentals and offers</span></label>'+
-      '<p class="note">'+esc(S.terms_note)+'</p><p class="err" data-err role="alert"></p>'+
+      '<p class="note">'+esc(S.terms_note).replace(/\s*\n+\s*/g,'</p><p class="note">')+'</p><p class="err" data-err role="alert"></p>'+
       '<button class="btn" type="submit">Request My Rentals</button></form>';
   }
   function renderCart(){
