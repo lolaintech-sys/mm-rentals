@@ -70,6 +70,24 @@
     return bad;
   }
   function label(k){var p=k.split('|'),it=items[p[0]];return (it?it.name:p[0])+(p[1]?' ('+p[1]+')':'')}
+  /* ---------- paused items: "Bookable again from" (back_on) set in the dashboard while Lola waits on an order ---------- */
+  var today0=(function(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)})();
+  function backOn(id){var it=items[id];return it&&it.back_on&&it.back_on>today0?it.back_on:''}
+  function anyPaused(){return D.items.some(function(i){return backOn(i.id)})}
+  function blocked(id){var b=backOn(id);return b&&ev.from&&ev.from<b?b:''}
+  function mday(d){var p=d.split('-');return new Date(+p[0],p[1]-1,+p[2]).toLocaleDateString('en-US',{month:'short',day:'numeric'})}
+  function pausedTag(id){var b=backOn(id); if(!b) return ''; if(blocked(id)) return '<p class="tag paused">Not available for your dates · available from '+mday(b)+'</p>'; return ev.from?'':'<p class="tag paused">Available for events from '+mday(b)+'</p>'}
+  /* Lines whose items (or package contents) can't be booked for the chosen start date. */
+  function pausedIssues(){
+    if(!ev.from) return [];
+    return lines.map(function(l){
+      var u=usage([l]),ids=[]; for(var k in u){var id=k.split('|')[0]; if(blocked(id)&&ids.indexOf(id)<0) ids.push(id)}
+      if(!ids.length) return '';
+      var first=ids.map(blocked).sort().pop();
+      var what=l.kind==='pkg'?pkgs[l.id].name+' (it includes '+ids.map(function(id){return items[id].name}).join(', ')+')':items[l.id].name;
+      return 'Not available for your dates: '+what+'. It\'s available for events from '+mday(first)+'. Remove it, or choose a start date on or after '+mday(first)+'.';
+    }).filter(Boolean);
+  }
 
   /* ---------- money ---------- */
   function linePrice(l){
@@ -121,7 +139,7 @@
     return {rentals:rentals,services:services,discount:discount,promo:pr,delivery:d,tax:tax,total:base+tax};
   }
   function issues(){
-    var out=[], t=totals();
+    var out=pausedIssues(), t=totals();
     if(ev.method==='Pickup'){
       var no=lines.filter(function(l){return l.kind==='pkg'||!items[l.id].pickup}).map(function(l){return l.kind==='pkg'?pkgs[l.id].name:items[l.id].name});
       if(no.length) out.push('Delivery only: '+no.join(', ')+'. Choose delivery, or remove '+(no.length>1?'them':'it')+'.');
@@ -152,9 +170,9 @@
       '<div class="body"><h3><button type="button" class="tbtn" data-open-item>'+esc(i.name)+'</button></h3>'+
       '<p class="price">'+(fromPrice(i)?'From ':'')+short(basePrice(i))+' <small>'+unitText(i)+'</small></p>'+
       (i.blurb?'<p class="blurb">'+esc(i.blurb)+'</p>':'')+
-      (!i.pickup&&!i.service?'<p class="tag">Delivery only</p>':'')+sel+
+      (!i.pickup&&!i.service?'<p class="tag">Delivery only</p>':'')+pausedTag(i.id)+sel+
       '<div class="row"><span class="step"><button type="button" data-dec aria-label="Less">−</button><input type="number" inputmode="numeric" min="1" value="1" aria-label="Quantity of '+esc(i.name)+'"><button type="button" data-inc aria-label="More">+</button></span>'+
-      '<button type="button" class="btn" data-add>Add</button></div></div></article>';
+      '<button type="button" class="btn" data-add'+(blocked(i.id)?' disabled':'')+'>'+(blocked(i.id)?'Unavailable':'Add')+'</button></div></div></article>';
   }
   function unitText(i){var u=i.unit==='each'?'each':(i.unit==='per chair'?'per chair':'per '+i.unit); return i.service?esc(u):esc(u)+' · 1 day rental'}
   function pkgCard(p){
@@ -318,7 +336,7 @@
     var keys=p.choices.map(function(c){return c.key});
     if(ui.modal.open===undefined) ui.modal.open=keys[0];
     var ch=p.choices.map(function(c,idx){
-      var opts=choiceOptions(c).filter(function(o){ if(c.key==='arch') return stockOf(o.item,'')>=1; return o.stock==null||o.stock>0 });
+      var opts=choiceOptions(c).filter(function(o){ if(c.key==='arch') return stockOf(o.item,'')>=1&&!blocked(o.item); return o.stock==null||o.stock>0 });
       if(sel[c.key]!=null&&!opts.some(function(o){return o.name===sel[c.key]})) delete sel[c.key]; if(sel[c.key]==null&&opts.length===1) sel[c.key]=opts[0].name;
       var cur=opts.filter(function(o){return o.name===sel[c.key]})[0]||{}, open=ui.modal.open===c.key, done=ui.modal.picked&&ui.modal.picked[c.key];
       var thumb=cur.photo?'<img src="'+esc(cur.photo)+'" alt="">':(cur.swatch?'<span class="sw" style="background:'+esc(cur.swatch)+'"></span>':'');
@@ -369,10 +387,10 @@
     m.querySelector('#mmrc-ititle').textContent=it.name;
     m.querySelector('.ib').innerHTML='<div class="igrid"><div>'+gal+'</div><div class="iinfo">'+
       '<p class="price">'+short(unit)+' <small>'+unitText(it)+'</small></p>'+
-      (!it.pickup&&!it.service?'<p class="tag">Delivery only</p>':'')+choose+
+      (!it.pickup&&!it.service?'<p class="tag">Delivery only</p>':'')+pausedTag(it.id)+choose+
       '<div class="idesc">'+(it.description||(it.blurb?'<p>'+esc(it.blurb)+'</p>':''))+'</div></div></div>';
     m.querySelector('.ifoot').innerHTML='<span class="step"><button type="button" data-iqd="-1" aria-label="Less">−</button><input type="number" inputmode="numeric" min="1" value="'+qty+'" data-iqty aria-label="Quantity of '+esc(it.name)+'"><button type="button" data-iqd="1" aria-label="More">+</button></span>'+
-      '<button type="button" class="btn" data-add-item>Add to quote · '+short(unit*qty)+'</button>';
+      (blocked(it.id)?'<button type="button" class="btn" data-add-item disabled>Not available for your dates</button>':'<button type="button" class="btn" data-add-item>Add to quote · '+short(unit*qty)+'</button>');
     var tr=m.querySelector('[data-gtrack]');
     tr.addEventListener('scroll',function(){clearTimeout(tr._t);tr._t=setTimeout(function(){gallerySync(m)},60)},{passive:true});
   }
@@ -389,7 +407,7 @@
   function itemQty(q){
     if(!ui.item) return; ui.item.qty=Math.max(1,q|0||1);
     var it=items[ui.item.id], o=itemOpts(it).filter(function(o){return o.name===ui.item.opt})[0], m=root.querySelector('[data-imodal]');
-    m.querySelector('[data-iqty]').value=ui.item.qty; m.querySelector('[data-add-item]').textContent='Add to quote · '+short(((o&&o.price)||it.price)*ui.item.qty);
+    m.querySelector('[data-iqty]').value=ui.item.qty; if(!blocked(it.id)) m.querySelector('[data-add-item]').textContent='Add to quote · '+short(((o&&o.price)||it.price)*ui.item.qty);
   }
   function openItem(card,from){
     var s=card.querySelector('[data-opt]'), q=card.querySelector('.row input');
@@ -582,6 +600,7 @@
       if(k==='from'||k==='until'){$all('.mmrc [data-ev=from]').forEach(function(x){x.value=ev.from});$all('.mmrc [data-ev=until]').forEach(function(x){x.value=ev.until;x.min=ev.from||minDate});$all('.mmrc .pd-from').forEach(function(x){x.textContent='('+(pretty(ev.from)||'start date')+')'});$all('.mmrc .pd-until').forEach(function(x){x.textContent='('+(pretty(ev.until)||'end date')+')'})}
       if(k==='street'||k==='city'||k==='zip') lookup();
       if(k==='from'||k==='until') renderCart();
+      if(k==='from'&&anyPaused()){renderCatalog();renderItem();renderModal()}
       return}
     if(el.dataset.lq!=null) setLine(+el.dataset.lq,el.value);
   });
