@@ -8,6 +8,62 @@
 (function () {
   if (window.__mmrcLoader) return; window.__mmrcLoader = true;
 
+  /* Photo protection + watermark (Lola, Nov 26 2026). A deterrent, not a lock: it blocks right-click / long-press
+   * "Save image", dragging photos out, and Cmd/Ctrl+S, Cmd/Ctrl+U and the developer-tools shortcuts. Screenshots
+   * can't be blocked by any website, so large photos also get a small watermark drawn over them on screen.
+   * Off inside the Squarespace editor (the site shows there in a frame). Headers, logos, section backgrounds and
+   * small images get no watermark; add class "mm-wm-skip" to any block that should not have one. */
+  (function () {
+    if (window.top !== window.self) return;
+    var MARK = 'bookmicromoments.com', MIN_W = 280, MIN_H = 200;
+    var st = document.createElement('style');
+    st.textContent = 'img{-webkit-touch-callout:none;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}' +
+      '.mm-wm-tag{position:absolute;right:12px;bottom:10px;z-index:3;pointer-events:none;user-select:none;-webkit-user-select:none;' +
+      'font:500 11px/1 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;letter-spacing:.08em;' +
+      'color:rgba(255,255,255,.5);text-shadow:0 1px 2px rgba(0,0,0,.22);white-space:nowrap}';
+    (document.head || document.documentElement).appendChild(st);
+
+    function isPhoto(t) { return t && t.nodeType === 1 && (t.tagName === 'IMG' || t.tagName === 'PICTURE' || (t.closest && t.closest('.mm-wm-box'))); }
+    document.addEventListener('contextmenu', function (e) { if (isPhoto(e.target)) e.preventDefault(); }, true);
+    document.addEventListener('dragstart', function (e) { if (e.target && e.target.tagName === 'IMG') e.preventDefault(); }, true);
+    document.addEventListener('keydown', function (e) {
+      var c = e.code || '', m = e.metaKey || e.ctrlKey;
+      if (c === 'F12' || (m && (c === 'KeyS' || c === 'KeyU')) ||
+          (m && (e.shiftKey || e.altKey) && /^Key[IJC]$/.test(c))) { e.preventDefault(); e.stopPropagation(); }
+    }, true);
+
+    function mark() {
+      var imgs = document.images;
+      for (var i = 0; i < imgs.length; i++) {
+        var im = imgs[i];
+        if (im.__mmwm) continue;
+        if (im.closest('header,nav,footer .sqs-block-image-link,.section-background,.header,.mm-wm-skip,[data-drawer]')) { im.__mmwm = 1; continue; }
+        var r = im.getBoundingClientRect();
+        if (r.width < MIN_W || r.height < MIN_H) continue;   // may still be loading or growing: try again later
+        // The box that sits exactly around the photo, so the mark lands in the photo's own corner.
+        var box = im.parentElement, pick = null;
+        for (var d = 0; d < 4 && box && box !== document.body; d++, box = box.parentElement) {
+          var b = box.getBoundingClientRect();
+          if (Math.abs(b.width - r.width) < 6 && Math.abs(b.height - r.height) < 6) pick = box;
+          else break;
+        }
+        im.__mmwm = 1;
+        if (!pick || pick.querySelector(':scope > .mm-wm-tag')) continue;
+        if (getComputedStyle(pick).position === 'static') pick.style.position = 'relative';
+        pick.classList.add('mm-wm-box');
+        var tag = document.createElement('span');
+        tag.className = 'mm-wm-tag'; tag.setAttribute('aria-hidden', 'true'); tag.textContent = MARK;
+        pick.appendChild(tag);
+      }
+    }
+    var due = 0;
+    function soon() { if (!due) due = setTimeout(function () { due = 0; try { mark(); } catch (e) {} }, 250); }
+    soon();
+    document.addEventListener('load', function (e) { if (e.target && e.target.tagName === 'IMG') soon(); }, true);
+    window.addEventListener('load', soon); window.addEventListener('resize', soon);
+    try { new MutationObserver(soon).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
+  })();
+
   /* Where this visitor came from, for the admin dashboard: ad click IDs, UTM tags, or the referring site. The newest
    * visit that isn't "direct" wins and is kept 90 days; the cart sends it with the quote request. Nothing is shown. */
   try {
